@@ -7,6 +7,8 @@ import (
 
 // ByteLiner supports mapping between byte offset and line/column.
 // Lines start at 0, columns start at 0.
+// The newline character that ends a line is the last column
+// on the line it ends.
 type ByteLiner interface {
 	GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 	GetOffset(line int, column int) (offset int, ok error)
@@ -32,17 +34,28 @@ func (t *tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 	// Step 2: Save that index: it's the line.
 	// Step 3: byteOffset - RunningLineLengths[line] is positive, and is the column.
 
+	if byteOffset < 0 {
+		ok = fmt.Errorf("valid byteOffset is >= 0, not %v", byteOffset)
+		return
+	}
+
 	line = sort.SearchInts(t.RunningLineLengths, byteOffset)
-	if line < len(t.RunningLineLengths) {
-		col = byteOffset - t.RunningLineLengths[line+1]
-	} else {
+	// t.RunningLineLengths[line] is >= byteOffset
+
+	if line >= len(t.RunningLineLengths) {
 		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen offset %v",
 			byteOffset,
 			t.RunningLineLengths[len(t.RunningLineLengths)-1])
+		return
 	}
 
-	// internally, lines start at 1
+	if t.RunningLineLengths[line] == byteOffset {
+		col = 0
+		return
+	}
+
 	line--
+	col = byteOffset - t.RunningLineLengths[line]
 
 	return
 }
@@ -63,7 +76,7 @@ func (t *tracker) GetOffset(line int, column int) (offset int, ok error) {
 		return
 	}
 	if line >= len(t.RunningLineLengths) {
-		ok = fmt.Errorf("requested line %v is beyond the last seen line %v", line, len(t.RunningLineLengths))
+		ok = fmt.Errorf("requested line %v is beyond the last seen line %v", line-1, len(t.RunningLineLengths)-1)
 		return
 	}
 
