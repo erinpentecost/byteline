@@ -28,5 +28,5 @@ type Reader struct {
 // Callers should treat a return of 0 and nil as indicating that
 // nothing happened; in particular it does not indicate EOF.
 func (r *Reader) Read(p []byte) (n int, err error) {
-
+	return
 }

@@ -8,9 +8,9 @@ type Writer struct {
 // and any error encountered that caused the write to stop early.
 // Write must return a non-nil error if it returns n < len(p).
 func (w *Writer) Write(p []byte) (n int, err error) {
-
+	return
 }
 
 func (w *Writer) WriteString(s string) (n int, err error) {
-
+	return
 }
