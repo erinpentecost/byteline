@@ -23,16 +23,13 @@ type tracker struct {
 
 func newTracker() *tracker {
 	t := &tracker{
-		RunningLineLengths: make([]int, 1, 500),
+		RunningLineLengths: make([]int, 0, 500),
 	}
-	t.RunningLineLengths[0] = 0
+	//t.RunningLineLengths[0] = 0
 	return t
 }
 
 func (t *tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
-	// Step 1: Search RunningLineLengths for where byteOffset would fall into.
-	// Step 2: Save that index: it's the line.
-	// Step 3: byteOffset - RunningLineLengths[line] is positive, and is the column.
 
 	if byteOffset < 0 {
 		ok = fmt.Errorf("valid byteOffset is >= 0, not %v", byteOffset)
@@ -40,51 +37,54 @@ func (t *tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 	}
 
 	line = sort.SearchInts(t.RunningLineLengths, byteOffset)
-	// t.RunningLineLengths[line] is >= byteOffset
 
 	if line >= len(t.RunningLineLengths) {
-		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen offset %v",
+		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen line %v",
 			byteOffset,
-			t.RunningLineLengths[len(t.RunningLineLengths)-1])
+			len(t.RunningLineLengths)-1)
 		return
 	}
 
-	if t.RunningLineLengths[line] == byteOffset {
+	lineEnd := t.RunningLineLengths[line]
+
+	if lineEnd == byteOffset {
+		line++
 		col = 0
 		return
 	}
 
-	line--
-	col = byteOffset - t.RunningLineLengths[line]
+	lineStart := 0
+	if line > 0 {
+		lineStart = t.RunningLineLengths[line-1]
+	}
+
+	col = byteOffset - lineStart
 
 	return
 }
 
 func (t *tracker) GetOffset(line int, column int) (offset int, ok error) {
-	// Step 1: Return RunningLineLengths[line] + column.
-	// If that's over RunningLineLengths[line + 1], the caller made a boo-boo.
 
 	if line < 0 {
 		ok = fmt.Errorf("by convention, the first line is 0. %v is before that", line)
 		return
 	}
-	// internally, lines start at 1.
-	line++
 
 	if column < 0 {
 		ok = fmt.Errorf("by convention, the first column is 0. %v is before that", column)
 		return
 	}
-	if line >= len(t.RunningLineLengths) {
-		ok = fmt.Errorf("requested line %v is beyond the last seen line %v", line-1, len(t.RunningLineLengths)-1)
-		return
+
+	lineStart := 0
+	if line > 0 {
+		lineStart = t.RunningLineLengths[line-1]
 	}
 
-	offset = t.RunningLineLengths[line-1] + column
-	if offset > t.RunningLineLengths[line] {
-		ok = fmt.Errorf("requested column %v is beyond the end (%v) of requested line %v",
+	offset = lineStart + column
+
+	if line >= len(t.RunningLineLengths) && !(line == len(t.RunningLineLengths) && column == 0) {
+		ok = fmt.Errorf("requested column %v is beyond the end of requested line %v",
 			column,
-			t.RunningLineLengths[line],
 			line)
 	}
 
