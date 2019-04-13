@@ -170,7 +170,11 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 
 	line = sort.SearchInts(t.RunningLineLengths, byteOffset)
 
-	if line >= len(t.RunningLineLengths) {
+	if line == len(t.RunningLineLengths) &&
+		(byteOffset <= t.RunningLineLengths[line-1]+t.currentLineLength) {
+		col = byteOffset - t.RunningLineLengths[line-1]
+		return
+	} else if line >= len(t.RunningLineLengths) {
 		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen line %v",
 			byteOffset,
 			len(t.RunningLineLengths)-1)
