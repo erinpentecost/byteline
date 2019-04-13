@@ -5,13 +5,13 @@ import (
 )
 
 type Reader struct {
-	track *tracker
+	track *Tracker
 	re    io.Reader
 }
 
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
-		track: newTracker(),
+		track: NewTracker(),
 		re:    r,
 	}
 }
@@ -43,7 +43,7 @@ func NewReader(r io.Reader) *Reader {
 func (r *Reader) Read(p []byte) (n int, err error) {
 
 	n, err = r.re.Read(p)
-	_, trackErr := r.track.markBytes(p[:n])
+	_, trackErr := r.track.MarkBytes(p[:n])
 
 	if trackErr != nil && err == nil {
 		err = trackErr

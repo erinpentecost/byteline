@@ -23,7 +23,7 @@ func checkSameOk(t *testing.T, b ByteLiner, line int, col int, offset int) {
 }
 
 func TestSame(t *testing.T) {
-	tracker := newTracker()
+	tracker := NewTracker()
 	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
 	// Good values.
 	checkSameOk(t, tracker, 0, 0, 0)
@@ -41,7 +41,7 @@ func TestSame(t *testing.T) {
 }
 
 func TestGetOffsetError(t *testing.T) {
-	tracker := newTracker()
+	tracker := NewTracker()
 	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
 
 	check := func(line, column int) {
@@ -60,7 +60,7 @@ func TestGetOffsetError(t *testing.T) {
 }
 
 func TestGetLineColError(t *testing.T) {
-	tracker := newTracker()
+	tracker := NewTracker()
 	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
 
 	check := func(offset int) {
@@ -70,4 +70,15 @@ func TestGetLineColError(t *testing.T) {
 
 	check(-1)
 	check(31)
+}
+
+func TestSimpleMark(t *testing.T) {
+	tracker := NewTracker()
+	text := "Hello There\rPerson"
+	n, err := tracker.MarkBytes([]byte(text))
+	assert.Nil(t, err)
+	assert.Equal(t, len(text), n)
+	checkSameOk(t, tracker, 0, 0, 0)
+	checkSameOk(t, tracker, 1, 0, 12)
+	checkSameOk(t, tracker, 1, 4, 16)
 }

@@ -5,13 +5,13 @@ import (
 )
 
 type Writer struct {
-	track *tracker
+	track *Tracker
 	wr    io.Writer
 }
 
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
-		track: newTracker(),
+		track: NewTracker(),
 		wr:    w,
 	}
 }
@@ -23,7 +23,7 @@ func NewWriter(w io.Writer) *Writer {
 func (w *Writer) Write(p []byte) (n int, err error) {
 
 	n, err = w.wr.Write(p)
-	_, trackErr := w.track.markBytes(p[:n])
+	_, trackErr := w.track.MarkBytes(p[:n])
 
 	if trackErr != nil && err == nil {
 		err = trackErr
