@@ -82,7 +82,7 @@ func (t *tracker) GetOffset(line int, column int) (offset int, ok error) {
 
 	offset = lineStart + column
 
-	if line >= len(t.RunningLineLengths) && !(line == len(t.RunningLineLengths) && column == 0) {
+	if len(t.RunningLineLengths) > line && offset > t.RunningLineLengths[line] {
 		ok = fmt.Errorf("requested column %v is beyond the end of requested line %v",
 			column,
 			line)

@@ -53,7 +53,6 @@ func TestGetOffsetError(t *testing.T) {
 	check(0, -1)
 
 	check(2, 11)
-	check(3, 0)
 
 	check(1, 11)
 	check(2, 12)
