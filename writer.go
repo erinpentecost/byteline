@@ -1,6 +1,21 @@
 package byteline
 
+import (
+	"io"
+)
+
 type Writer struct {
+	err   error
+	track *tracker
+	wr    io.Writer
+}
+
+func NewWriter(w io.Writer) *Writer {
+	return &Writer{
+		err:   nil,
+		track: newTracker(),
+		wr:    w,
+	}
 }
 
 // Write writes len(p) bytes from p to the underlying data stream.
