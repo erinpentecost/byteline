@@ -1,6 +1,19 @@
 package byteline
 
+import (
+	"io"
+)
+
 type Reader struct {
+	track *tracker
+	re    io.Reader
+}
+
+func NewReader(r io.Reader) *Reader {
+	return &Reader{
+		track: newTracker(),
+		re:    r,
+	}
 }
 
 // Read reads up to len(p) bytes into p. It returns the number of bytes
@@ -28,5 +41,24 @@ type Reader struct {
 // Callers should treat a return of 0 and nil as indicating that
 // nothing happened; in particular it does not indicate EOF.
 func (r *Reader) Read(p []byte) (n int, err error) {
+
+	n, err = r.re.Read(p)
+	_, trackErr := r.track.markBytes(p[:n])
+
+	if trackErr != nil && err == nil {
+		err = trackErr
+	}
+
 	return
+}
+
+func (r *Reader) TrackError() error {
+	return r.track.err
+}
+
+func (r *Reader) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
+	return r.track.GetLineAndColumn(byteOffset)
+}
+func (r *Reader) GetOffset(line int, column int) (offset int, ok error) {
+	return r.track.GetOffset(line, column)
 }

@@ -3,8 +3,8 @@ package byteline
 import (
 	"encoding/hex"
 	"fmt"
-	"hex"
 	"sort"
+	"sync"
 	"unicode/utf8"
 )
 
@@ -29,6 +29,7 @@ type tracker struct {
 	// prevLF is \n
 	prevLF            bool
 	currentLineLength int
+	mux               sync.Mutex
 }
 
 func newTracker() *tracker {
@@ -44,14 +45,21 @@ func newTracker() *tracker {
 }
 
 func (t *tracker) markBytes(p []byte) (int, error) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	// if it's hosed, give up.
+	if t.err != nil {
+		return 0, t.err
+	}
+
 	// stick buff onto first part of incoming bytes
 	var incoming []byte
 	if len(t.buf) == 0 {
 		incoming = p
 	} else {
-		incoming := make([]byte, len(p)+len(t.buf), len(p)+len(t.buf))
+		incoming := make([]byte, len(p)+len(t.buf))
 		copy(t.buf, incoming)
-		copy(p, incoming[len(t.buf)])
+		copy(p, incoming[len(t.buf):])
 	}
 
 	// clear buff, we captured them in incoming
@@ -86,34 +94,54 @@ func (t *tracker) markBytes(p []byte) (int, error) {
 			return i, oops
 		}
 		// at this point, we have a valid rune and its size
-		markRune(r, s)
+		t.markRune(r, s)
+		i += s
 	}
+
+	// success
+	return i, t.err
 }
 
-// TODO: handle mixed newlines
 func (t *tracker) markRune(r rune, size int) {
 
 	if r != '\r' && r != '\n' {
 		if t.prevCR || t.prevLF {
 			// last char was the end of the line, current one is a new line.
+			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
+			t.currentLineLength = size
 		} else {
 			// increment current line
+			t.currentLineLength += size
 		}
 		t.prevCR = false
 		t.prevLF = false
 	} else {
+		t.currentLineLength += size
+
 		// we are close to ending the line.
 		if r == '\r' && t.prevCR {
-			// true end of the line
+			// true end of the line in a two-rune line ending (Windows)
+			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
+			t.currentLineLength = 0
 			t.prevCR = false
 			t.prevLF = false
 		} else if r == '\n' && t.prevLF {
-			// true end of the line
+			// true end of the line in a two-rune line ending (Acorn BBC + RISC OS)
+			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
+			t.currentLineLength = 0
 			t.prevCR = false
 			t.prevLF = false
+		} else if r == '\r' {
+			// this is the start of an end-of-line chord
+			t.prevCR = true
+			t.prevLF = false
+		} else if r == '\n' {
+			// this is the start of an end-of-line chord
+			t.prevCR = false
+			t.prevLF = true
 		}
+		panic("oh no")
 	}
-
 }
 
 func printHead(p []byte) string {
@@ -128,6 +156,8 @@ func printHead(p []byte) string {
 }
 
 func (t *tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
 
 	if byteOffset < 0 {
 		ok = fmt.Errorf("valid byteOffset is >= 0, not %v", byteOffset)
@@ -162,6 +192,8 @@ func (t *tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 }
 
 func (t *tracker) GetOffset(line int, column int) (offset int, ok error) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
 
 	if line < 0 {
 		ok = fmt.Errorf("by convention, the first line is 0. %v is before that", line)
