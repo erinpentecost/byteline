@@ -72,7 +72,7 @@ func TestGetLineColError(t *testing.T) {
 	check(31)
 }
 
-func TestSimpleMark(t *testing.T) {
+func TestUnixNewline(t *testing.T) {
 	tracker := NewTracker()
 	text := "Hello There\rPerson"
 	n, err := tracker.MarkBytes([]byte(text))
@@ -81,4 +81,28 @@ func TestSimpleMark(t *testing.T) {
 	checkSameOk(t, tracker, 0, 0, 0)
 	checkSameOk(t, tracker, 1, 0, 12)
 	checkSameOk(t, tracker, 1, 4, 16)
+}
+
+func TestWindowsNewline(t *testing.T) {
+	tracker := NewTracker()
+	text := "Hello There\r\nPerson"
+	n, err := tracker.MarkBytes([]byte(text))
+	assert.Nil(t, err)
+	assert.Equal(t, len(text), n)
+	checkSameOk(t, tracker, 0, 0, 0)
+	checkSameOk(t, tracker, 1, 0, 13)
+	checkSameOk(t, tracker, 1, 4, 17)
+}
+
+func TestDoubleWindowsNewline(t *testing.T) {
+	tracker := NewTracker()
+	text := "Hello There\r\rPerson"
+	n, err := tracker.MarkBytes([]byte(text))
+	assert.Nil(t, err)
+	assert.Equal(t, len(text), n)
+	checkSameOk(t, tracker, 0, 0, 0)
+	checkSameOk(t, tracker, 0, 11, 11)
+	checkSameOk(t, tracker, 1, 0, 12)
+	checkSameOk(t, tracker, 2, 0, 13)
+	checkSameOk(t, tracker, 2, 1, 14)
 }

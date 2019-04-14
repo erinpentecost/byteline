@@ -15,20 +15,16 @@ type Tracker struct {
 	RunningLineLengths []int
 	buf                []byte
 	err                error
-	// prevCR is \r
-	prevCR bool
-	// prevLF is \n
-	prevLF            bool
-	currentLineLength int
-	mux               sync.Mutex
+	prev               rune
+	currentLineLength  int
+	mux                sync.Mutex
 }
 
 func NewTracker() *Tracker {
 	t := &Tracker{
 		RunningLineLengths: make([]int, 0, 500),
 		buf:                make([]byte, 0, 4),
-		prevCR:             false,
-		prevLF:             false,
+		prev:               0,
 		currentLineLength:  0,
 	}
 	//t.RunningLineLengths[0] = 0
@@ -94,57 +90,33 @@ func (t *Tracker) MarkBytes(p []byte) (int, error) {
 }
 
 func (t *Tracker) markRune(r rune, size int) {
+	last := t.prev
+	t.prev = r
 
-	if r != '\r' && r != '\n' {
-		if t.prevCR || t.prevLF {
-			// last char was the end of the line, current one is a new line.
+	if last == '\r' || last == '\n' {
+		if r == '\r' || r == '\n' {
+			t.prev = 0
+
+			if last != r {
+				// current is end of this line. this the second character
+				// of a /r/n or /n/r pair.
+				t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength+size)
+				t.currentLineLength = 0
+			} else {
+				// previous was an end, and current is also. this is the
+				// second character of a /r/r or /n/n pair.
+				t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength, size)
+				t.currentLineLength = 0
+			}
+		} else {
+			// previous was an end, but this is not. this is the second
+			// character of a /rX or /nX pair.
 			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
 			t.currentLineLength = size
-		} else {
-			// increment current line
-			t.currentLineLength += size
 		}
-		t.prevCR = false
-		t.prevLF = false
 	} else {
+		// normal.
 		t.currentLineLength += size
-
-		// we are close to ending the line.
-		if r == '\r' && t.prevCR {
-			// true end of the line in a two-rune line ending (Windows)
-			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
-			t.currentLineLength = 0
-			t.prevCR = false
-			t.prevLF = false
-		} else if r == '\n' && t.prevLF {
-			// true end of the line in a two-rune line ending (Acorn BBC + RISC OS)
-			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
-			t.currentLineLength = 0
-			t.prevCR = false
-			t.prevLF = false
-		} else if r == '\r' && t.prevLF {
-			// two \r's in a row
-			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength, 1)
-			t.currentLineLength = 0
-			t.prevCR = false
-			t.prevLF = false
-		} else if r == '\n' && t.prevCR {
-			// two \n's in a row
-			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength, 1)
-			t.currentLineLength = 0
-			t.prevCR = false
-			t.prevLF = false
-		} else if r == '\r' {
-			// this is the start of an end-of-line chord
-			t.prevCR = true
-			t.prevLF = false
-		} else if r == '\n' {
-			// this is the start of an end-of-line chord
-			t.prevCR = false
-			t.prevLF = true
-		} else {
-			panic("oh no")
-		}
 	}
 }
 
