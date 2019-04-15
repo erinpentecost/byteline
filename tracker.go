@@ -16,7 +16,6 @@ type Tracker struct {
 	buf                []byte
 	err                error
 	prev               rune
-	currentLineLength  int
 	mux                sync.Mutex
 }
 
@@ -25,9 +24,8 @@ func NewTracker() *Tracker {
 		RunningLineLengths: make([]int, 0, 500),
 		buf:                make([]byte, 0, 4),
 		prev:               0,
-		currentLineLength:  0,
 	}
-	//t.RunningLineLengths[0] = 0
+	t.RunningLineLengths[0] = 0
 	return t
 }
 
@@ -89,6 +87,15 @@ func (t *Tracker) MarkBytes(p []byte) (int, error) {
 	return i, t.err
 }
 
+func (t *Tracker) addToCurrentLine(size int) {
+	last := len(t.RunningLineLengths) - 1
+	t.RunningLineLengths[last] += size
+}
+
+func (t *Tracker) endLine() {
+	t.RunningLineLengths = append(t.RunningLineLengths, 0)
+}
+
 func (t *Tracker) markRune(r rune, size int) {
 	last := t.prev
 	t.prev = r
@@ -100,23 +107,24 @@ func (t *Tracker) markRune(r rune, size int) {
 			if last != r {
 				// current is end of this line. this the second character
 				// of a /r/n or /n/r pair.
-				t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength+size)
-				t.currentLineLength = 0
+				t.addToCurrentLine(size)
+				t.endLine()
 			} else {
 				// previous was an end, and current is also. this is the
 				// second character of a /r/r or /n/n pair.
-				t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength, size)
-				t.currentLineLength = 0
+				t.endLine()
+				t.addToCurrentLine(size)
+				t.endLine()
 			}
 		} else {
 			// previous was an end, but this is not. this is the second
 			// character of a /rX or /nX pair.
-			t.RunningLineLengths = append(t.RunningLineLengths, t.currentLineLength)
-			t.currentLineLength = size
+			t.endLine()
+			t.addToCurrentLine(size)
 		}
 	} else {
 		// normal.
-		t.currentLineLength += size
+		t.addToCurrentLine(size)
 	}
 }
 
