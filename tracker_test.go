@@ -40,6 +40,16 @@ func TestSame(t *testing.T) {
 	checkSameOk(t, tracker, 3, 0, 30)
 }
 
+func TestEmpty(t *testing.T) {
+	tracker := NewTracker()
+	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 1, 1, 1, 1)
+	// Good values.
+	checkSameOk(t, tracker, 0, 0, 0)
+	checkSameOk(t, tracker, 1, 0, 1)
+	checkSameOk(t, tracker, 2, 0, 2)
+	checkSameOk(t, tracker, 3, 0, 3)
+}
+
 func TestGetOffsetError(t *testing.T) {
 	tracker := NewTracker()
 	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
@@ -94,7 +104,7 @@ func TestWindowsNewline(t *testing.T) {
 	checkSameOk(t, tracker, 1, 4, 17)
 }
 
-func TestDoubleWindowsNewline(t *testing.T) {
+func TestDoubleUnixNewline(t *testing.T) {
 	tracker := NewTracker()
 	text := "Hello There\r\rPerson"
 	n, err := tracker.MarkBytes([]byte(text))
