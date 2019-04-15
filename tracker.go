@@ -21,7 +21,7 @@ type Tracker struct {
 
 func NewTracker() *Tracker {
 	t := &Tracker{
-		RunningLineLengths: make([]int, 0, 500),
+		RunningLineLengths: make([]int, 1, 500),
 		buf:                make([]byte, 0, 4),
 		prev:               0,
 	}
@@ -93,7 +93,8 @@ func (t *Tracker) addToCurrentLine(size int) {
 }
 
 func (t *Tracker) endLine() {
-	t.RunningLineLengths = append(t.RunningLineLengths, 0)
+	last := len(t.RunningLineLengths) - 1
+	t.RunningLineLengths = append(t.RunningLineLengths, t.RunningLineLengths[last])
 }
 
 func (t *Tracker) markRune(r rune, size int) {
@@ -149,32 +150,20 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 	}
 
 	line = sort.SearchInts(t.RunningLineLengths, byteOffset)
+	numLines := len(t.RunningLineLengths)
 
-	if line == len(t.RunningLineLengths) &&
-		(byteOffset <= t.RunningLineLengths[line-1]+t.currentLineLength) {
-		col = byteOffset - t.RunningLineLengths[line-1]
-		return
-	} else if line >= len(t.RunningLineLengths) {
+	if line >= numLines {
 		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen line %v",
 			byteOffset,
-			len(t.RunningLineLengths)-1)
+			numLines-1)
 		return
+	} else if numLines > 1 && line > 1 && t.RunningLineLengths[line] == t.RunningLineLengths[line-1] {
+		// we are looking at the latest line
+		// the latest line might not be started yet in some cases
+		line--
 	}
 
-	lineEnd := t.RunningLineLengths[line]
-
-	if lineEnd == byteOffset {
-		line++
-		col = 0
-		return
-	}
-
-	lineStart := 0
-	if line > 0 {
-		lineStart = t.RunningLineLengths[line-1]
-	}
-
-	col = byteOffset - lineStart
+	col = byteOffset - t.RunningLineLengths[line-1]
 
 	return
 }
