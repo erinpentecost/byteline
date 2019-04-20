@@ -10,8 +10,7 @@ import (
 
 type Tracker struct {
 	// RunningLineLengths is an additive line length tracker.
-	// For example, a document with 3 lines all of length 10
-	// would result in {0,10,20,30}.
+	// Each value -should- be the last index of the line + [n-1]
 	RunningLineLengths []int
 	buf                []byte
 	err                error
@@ -103,6 +102,9 @@ func (t *Tracker) markRune(r rune, size int) {
 
 	if last == '\r' || last == '\n' {
 		if r == '\r' || r == '\n' {
+			// There were two line end runes in a row.
+			// Don't continue to collapse them, so mark
+			// prev as garbage.
 			t.prev = 0
 
 			if last != r {
@@ -140,6 +142,17 @@ func printHead(p []byte) string {
 	return fmt.Sprintf("<%s>", hex.EncodeToString(p[0:length]))
 }
 
+func findFirst(a []int, x int) int {
+	potential := sort.SearchInts(a, x)
+	for potential > 0 {
+		if a[potential-1] != x {
+			break
+		}
+		potential--
+	}
+	return potential
+}
+
 func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
@@ -149,7 +162,7 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 		return
 	}
 
-	line = sort.SearchInts(t.RunningLineLengths, byteOffset)
+	line = findFirst(t.RunningLineLengths, byteOffset)
 	numLines := len(t.RunningLineLengths)
 
 	if line >= numLines {
@@ -157,13 +170,14 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 			byteOffset,
 			numLines-1)
 		return
-	} else if numLines > 1 && line > 1 && t.RunningLineLengths[line] == t.RunningLineLengths[line-1] {
-		// we are looking at the latest line
-		// the latest line might not be started yet in some cases
-		line--
 	}
 
-	col = byteOffset - t.RunningLineLengths[line-1]
+	lineStart := 0
+	if line > 0 {
+		lineStart = t.RunningLineLengths[line]
+	}
+
+	col = byteOffset - lineStart
 
 	return
 }
