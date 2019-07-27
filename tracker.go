@@ -10,7 +10,9 @@ import (
 
 type Tracker struct {
 	// RunningLineLengths is an additive line length tracker.
-	// Each value -should- be the last index of the line + [n-1]
+	// Each value -should- be the last index of this line + [n-1]
+	// Line length includes the newline rune(s) that terminate it.
+	// If [n] == [n-1], then line n is empty and line n-1 is done.
 	RunningLineLengths []int
 	buf                []byte
 	err                error
@@ -18,6 +20,7 @@ type Tracker struct {
 	mux                sync.Mutex
 }
 
+// NewTracker creates a new Tracker.
 func NewTracker() *Tracker {
 	t := &Tracker{
 		RunningLineLengths: make([]int, 1, 500),
@@ -28,7 +31,11 @@ func NewTracker() *Tracker {
 	return t
 }
 
+// MarkBytes updates the tracker. Partial runes are ok.
 func (t *Tracker) MarkBytes(p []byte) (int, error) {
+	// This just exists to buffer up bytes until we
+	// see a complete rune. When that happens, the
+	// rune (and its size) are marked up.
 	t.mux.Lock()
 	defer t.mux.Unlock()
 	// if it's hosed, give up.
@@ -142,6 +149,7 @@ func printHead(p []byte) string {
 	return fmt.Sprintf("<%s>", hex.EncodeToString(p[0:length]))
 }
 
+// findFirst returns the first index in an array that is equal to x.
 func findFirst(a []int, x int) int {
 	potential := sort.SearchInts(a, x)
 	for potential > 0 {

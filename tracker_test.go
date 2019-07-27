@@ -12,11 +12,11 @@ func checkSameOk(t *testing.T, b ByteLiner, line int, col int, offset int) {
 	gline, gcol, lerr := b.GetLineAndColumn(offset)
 
 	if assert.NoError(t, oerr, fmt.Sprintf("GetOffset(%v, %v) returned an error", line, col)) {
-		assert.Equal(t, offset, goffset, fmt.Sprintf("GetOffset(%v, %v) is wrong.", line, col))
+		assert.Equal(t, offset, goffset, fmt.Sprintf("GetOffset(%v, %v) is wrong", line, col))
 	}
 
 	if assert.NoError(t, lerr, fmt.Sprintf("GetLineAndCol(%v) returned an error", offset)) {
-		assert.Equal(t, line, gline, fmt.Sprintf("GetLineAndCol(%v) returned a bad line.", offset))
+		assert.Equal(t, line, gline, fmt.Sprintf("GetLineAndCol(%v) returned a bad line", offset))
 		assert.Equal(t, col, gcol, fmt.Sprintf("GetLineAndCol(%v) returned a bad column", offset))
 	}
 
