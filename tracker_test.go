@@ -16,21 +16,21 @@ func checkSameOk(t *testing.T, b ByteLiner, line int, col int, offset int) {
 	}
 
 	if assert.NoError(t, lerr, fmt.Sprintf("GetLineAndCol(%v) returned an error", offset)) {
-		assert.Equal(t, line, gline, fmt.Sprintf("GetLineAndCol(%v) returned a bad line", offset))
-		assert.Equal(t, col, gcol, fmt.Sprintf("GetLineAndCol(%v) returned a bad column", offset))
+		if assert.Equal(t, line, gline, fmt.Sprintf("GetLineAndCol(%v) returned a bad line", offset)) {
+			assert.Equal(t, col, gcol, fmt.Sprintf("GetLineAndCol(%v) returned a bad column", offset))
+		}
 	}
 
 }
 
 func TestSame(t *testing.T) {
 	tracker := NewTracker()
-	tracker.RunningLineLengths = []int{10, 20, 30}
-	// Good values.
+	tracker.lineEndIndices = []int{10, 20, 30}
 	checkSameOk(t, tracker, 0, 0, 0)
 	checkSameOk(t, tracker, 0, 1, 1)
 	checkSameOk(t, tracker, 0, 5, 5)
 	checkSameOk(t, tracker, 0, 9, 9)
-	checkSameOk(t, tracker, 1, 0, 10)
+	checkSameOk(t, tracker, 0, 10, 0)
 	checkSameOk(t, tracker, 1, 1, 11)
 	checkSameOk(t, tracker, 1, 9, 19)
 	checkSameOk(t, tracker, 2, 0, 20)
@@ -42,7 +42,7 @@ func TestSame(t *testing.T) {
 
 func TestEmpty(t *testing.T) {
 	tracker := NewTracker()
-	tracker.RunningLineLengths = []int{1, 2, 3, 4}
+	tracker.lineEndIndices = []int{1, 2, 3, 4}
 	// Good values.
 	checkSameOk(t, tracker, 0, 0, 0)
 	checkSameOk(t, tracker, 1, 0, 1)
@@ -65,7 +65,7 @@ func TestOneRune(t *testing.T) {
 
 func TestGetOffsetError(t *testing.T) {
 	tracker := NewTracker()
-	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
+	tracker.lineEndIndices = append(tracker.lineEndIndices, 10, 20, 30)
 
 	check := func(line, column int) {
 		_, e := tracker.GetOffset(line, column)
@@ -84,7 +84,7 @@ func TestGetOffsetError(t *testing.T) {
 
 func TestGetLineColError(t *testing.T) {
 	tracker := NewTracker()
-	tracker.RunningLineLengths = append(tracker.RunningLineLengths, 10, 20, 30)
+	tracker.lineEndIndices = append(tracker.lineEndIndices, 10, 20, 30)
 
 	check := func(offset int) {
 		_, _, e := tracker.GetLineAndColumn(offset)

@@ -8,26 +8,28 @@ import (
 	"unicode/utf8"
 )
 
+// Tracker keeps track of line end offsets.
 type Tracker struct {
-	// RunningLineLengths is an additive line length tracker.
-	// Each value -should- be the last index of this line + [n-1]
-	// Line length includes the newline rune(s) that terminate it.
-	// If [n] == [n-1], then line n is empty and line n-1 is done.
-	RunningLineLengths []int
-	buf                []byte
-	err                error
-	prev               rune
-	mux                sync.Mutex
+	// Only completed lines are allowed in this data structure.
+	// A line's last newline character's index is the value
+	// for that line. Lines start at 0.
+	lineEndIndices           []int
+	currentLineLastSeenIndex int
+	buf                      []byte
+	err                      error
+	prev                     rune
+	mux                      sync.Mutex
 }
 
 // NewTracker creates a new Tracker.
 func NewTracker() *Tracker {
 	t := &Tracker{
-		RunningLineLengths: make([]int, 1, 500),
-		buf:                make([]byte, 0, 4),
-		prev:               0,
+		lineEndIndices:           make([]int, 1, 500),
+		currentLineLastSeenIndex: 0,
+		buf:                      make([]byte, 0, 4),
+		prev:                     0,
 	}
-	t.RunningLineLengths[0] = 0
+	t.lineEndIndices[0] = 0
 	return t
 }
 
@@ -94,13 +96,11 @@ func (t *Tracker) MarkBytes(p []byte) (int, error) {
 }
 
 func (t *Tracker) addToCurrentLine(size int) {
-	last := len(t.RunningLineLengths) - 1
-	t.RunningLineLengths[last] += size
+	t.currentLineLastSeenIndex += size
 }
 
 func (t *Tracker) endLine() {
-	last := len(t.RunningLineLengths) - 1
-	t.RunningLineLengths = append(t.RunningLineLengths, t.RunningLineLengths[last])
+	t.lineEndIndices = append(t.lineEndIndices, t.currentLineLastSeenIndex)
 }
 
 func (t *Tracker) markRune(r rune, size int) {
@@ -149,18 +149,7 @@ func printHead(p []byte) string {
 	return fmt.Sprintf("<%s>", hex.EncodeToString(p[0:length]))
 }
 
-// findFirst returns the first index in an array that is equal to x.
-func findFirst(a []int, x int) int {
-	potential := sort.SearchInts(a, x)
-	for potential > 0 {
-		if a[potential-1] != x {
-			break
-		}
-		potential--
-	}
-	return potential
-}
-
+// GetLineAndColumn returns the line and column given a byte offset.
 func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
@@ -170,32 +159,37 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 		return
 	}
 
-	line = findFirst(t.RunningLineLengths, byteOffset)
-	numLines := len(t.RunningLineLengths)
-
-	if line >= numLines {
-		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen line %v",
+	if byteOffset > t.currentLineLastSeenIndex {
+		ok = fmt.Errorf("requested byteOffset %v is beyond the last seen byte %v",
 			byteOffset,
-			numLines-1)
+			t.currentLineLastSeenIndex)
 		return
 	}
 
-	lineStart := 0
-	if line > 0 {
-		lineStart = t.RunningLineLengths[line]
+	line = sort.SearchInts(t.lineEndIndices, byteOffset)
+	line--
+	if line < 0 {
+		line = 0
 	}
 
-	col = byteOffset - lineStart
-
+	col = byteOffset - t.lineEndIndices[line]
 	return
 }
 
+// GetOffset returns the byte offset given a line and column.
 func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
+	// input validation
+
 	if line < 0 {
 		ok = fmt.Errorf("by convention, the first line is 0. %v is before that", line)
+		return
+	}
+
+	if line > len(t.lineEndIndices) {
+		ok = fmt.Errorf("requested line %v is beyond the last seen line %v", line, len(t.lineEndIndices))
 		return
 	}
 
@@ -204,14 +198,25 @@ func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
 		return
 	}
 
+	// get sane bounds on the indices of the requested line
+
 	lineStart := 0
 	if line > 0 {
-		lineStart = t.RunningLineLengths[line-1]
+		lineStart = t.lineEndIndices[line-1]
 	}
 
-	offset = lineStart + column
+	lineEnd := t.currentLineLastSeenIndex
+	if line < len(t.lineEndIndices) {
+		lineEnd = t.lineEndIndices[line]
+	}
 
-	if len(t.RunningLineLengths) > line && offset > t.RunningLineLengths[line] {
+	// calculate the offset
+
+	offset = column + lineStart
+
+	// check if the offset violated our upper bound
+
+	if offset > lineEnd {
 		ok = fmt.Errorf("requested column %v is beyond the end of requested line %v",
 			column,
 			line)
