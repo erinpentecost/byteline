@@ -4,11 +4,13 @@ import (
 	"io"
 )
 
+// Writer wraps around an internal writer and counts lines.
 type Writer struct {
 	track *Tracker
 	wr    io.Writer
 }
 
+// NewWriter returns a new byteline writer middleware.
 func NewWriter(w io.Writer) *Writer {
 	return &Writer{
 		track: NewTracker(),
@@ -32,13 +34,18 @@ func (w *Writer) Write(p []byte) (n int, err error) {
 	return
 }
 
+// TrackError is non-nil if the byteline tracker encountered an
+// unrecoverable error.
 func (w *Writer) TrackError() error {
 	return w.track.err
 }
 
+// GetLineAndColumn returns the line and column for the given byte offset.
 func (w *Writer) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
 	return w.track.GetLineAndColumn(byteOffset)
 }
+
+// GetOffset returns the byte offset for the given line and column.
 func (w *Writer) GetOffset(line int, column int) (offset int, ok error) {
 	return w.track.GetOffset(line, column)
 }

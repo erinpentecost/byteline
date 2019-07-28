@@ -2,6 +2,7 @@ package byteline
 
 import (
 	"fmt"
+	"sort"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -20,6 +21,13 @@ func checkSameOk(t *testing.T, b ByteLiner, line int, col int, offset int) {
 		assert.Equal(t, col, gcol, fmt.Sprintf("GetLineAndCol(%v) returned a bad column", offset))
 	}
 
+}
+
+func TestSearch(t *testing.T) {
+	testList := []int{0, 3, 5, 7}
+	assert.Equal(t, 0, sort.SearchInts(testList, 0))
+	assert.Equal(t, 1, sort.SearchInts(testList, 1))
+	assert.Equal(t, 1, sort.SearchInts(testList, 3))
 }
 
 func TestSame(t *testing.T) {
@@ -62,8 +70,8 @@ func TestOneRune(t *testing.T) {
 	checkSameOk(t, tracker, 1, 1, 3)
 	checkSameOk(t, tracker, 2, 0, 4)
 	checkSameOk(t, tracker, 2, 1, 5)
+	// can we handle current line?
 	checkSameOk(t, tracker, 3, 0, 6)
-	checkSameOk(t, tracker, 3, 1, 7)
 }
 
 func TestGetOffsetError(t *testing.T) {
@@ -89,7 +97,7 @@ func TestGetOffsetError(t *testing.T) {
 func TestGetLineColError(t *testing.T) {
 	tracker := NewTracker()
 	tracker.lineEndIndices = append(tracker.lineEndIndices, 10, 20, 30)
-	tracker.currentLineLastSeenIndex = 100
+	tracker.currentLineLastSeenIndex = 30
 
 	check := func(offset int) {
 		_, _, e := tracker.GetLineAndColumn(offset)

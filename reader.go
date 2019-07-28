@@ -4,11 +4,13 @@ import (
 	"io"
 )
 
+// Reader wraps around an internal reader and counts lines.
 type Reader struct {
 	track *Tracker
 	re    io.Reader
 }
 
+// NewReader returns a new byteline reader middleware.
 func NewReader(r io.Reader) *Reader {
 	return &Reader{
 		track: NewTracker(),
@@ -52,13 +54,18 @@ func (r *Reader) Read(p []byte) (n int, err error) {
 	return
 }
 
+// TrackError is non-nil if the byteline tracker encountered an
+// unrecoverable error.
 func (r *Reader) TrackError() error {
 	return r.track.err
 }
 
+// GetLineAndColumn returns the line and column for the given byte offset.
 func (r *Reader) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
 	return r.track.GetLineAndColumn(byteOffset)
 }
+
+// GetOffset returns the byte offset for the given line and column.
 func (r *Reader) GetOffset(line int, column int) (offset int, ok error) {
 	return r.track.GetOffset(line, column)
 }

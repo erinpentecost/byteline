@@ -8,12 +8,6 @@ import (
 	"unicode/utf8"
 )
 
-// TODO: I can probably get rid of some branching
-// if I keep lineEndIndices[0] = 0.
-
-// TODO: This only gives correct results when runes
-// are 1 byte in length.
-
 // Tracker keeps track of line end offsets.
 type Tracker struct {
 	// Only completed lines are allowed in this data structure.
@@ -30,8 +24,8 @@ type Tracker struct {
 // NewTracker creates a new Tracker.
 func NewTracker() *Tracker {
 	t := &Tracker{
-		lineEndIndices:           make([]int, 1, 500),
-		currentLineLastSeenIndex: 0,
+		lineEndIndices:           make([]int, 0, 500),
+		currentLineLastSeenIndex: -1,
 		buf:                      make([]byte, 0, 4),
 		prev:                     0,
 	}
