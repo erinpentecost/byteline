@@ -8,6 +8,12 @@ import (
 	"unicode/utf8"
 )
 
+// TODO: I can probably get rid of some branching
+// if I keep lineEndIndices[0] = 0.
+
+// TODO: This only gives correct results when runes
+// are 1 byte in length.
+
 // Tracker keeps track of line end offsets.
 type Tracker struct {
 	// Only completed lines are allowed in this data structure.
@@ -29,7 +35,6 @@ func NewTracker() *Tracker {
 		buf:                      make([]byte, 0, 4),
 		prev:                     0,
 	}
-	t.lineEndIndices[0] = 0
 	return t
 }
 
@@ -167,12 +172,11 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 	}
 
 	line = sort.SearchInts(t.lineEndIndices, byteOffset)
-	line--
-	if line < 0 {
-		line = 0
+	if line == 0 {
+		col = byteOffset
+	} else {
+		col = byteOffset - t.lineEndIndices[line-1] - 1
 	}
-
-	col = byteOffset - t.lineEndIndices[line]
 	return
 }
 
@@ -203,6 +207,7 @@ func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
 	lineStart := 0
 	if line > 0 {
 		lineStart = t.lineEndIndices[line-1]
+		column++ // first line is weird
 	}
 
 	lineEnd := t.currentLineLastSeenIndex
