@@ -223,3 +223,19 @@ func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
 
 	return
 }
+
+// GetCurrentLineAndColumn returns the current line and column.
+func (t *Tracker) GetCurrentLineAndColumn() (line int, col int, ok error) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	line, col, ok = t.GetLineAndColumn(t.currentLineLastSeenIndex)
+	return
+}
+
+// GetCurrentOffset returns the current byte offset.
+func (t *Tracker) GetCurrentOffset() (offset int, ok error) {
+	t.mux.Lock()
+	defer t.mux.Unlock()
+	offset = t.currentLineLastSeenIndex
+	return
+}

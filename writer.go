@@ -49,3 +49,13 @@ func (w *Writer) GetLineAndColumn(byteOffset int) (line int, col int, ok error) 
 func (w *Writer) GetOffset(line int, column int) (offset int, ok error) {
 	return w.track.GetOffset(line, column)
 }
+
+// GetCurrentLineAndColumn returns the current line and column.
+func (w *Writer) GetCurrentLineAndColumn() (line int, col int, ok error) {
+	return w.track.GetCurrentLineAndColumn()
+}
+
+// GetCurrentOffset returns the current byte offset.
+func (w *Writer) GetCurrentOffset() (offset int, ok error) {
+	return w.track.GetCurrentOffset()
+}
