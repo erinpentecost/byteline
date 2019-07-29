@@ -69,3 +69,13 @@ func (r *Reader) GetLineAndColumn(byteOffset int) (line int, col int, ok error) 
 func (r *Reader) GetOffset(line int, column int) (offset int, ok error) {
 	return r.track.GetOffset(line, column)
 }
+
+// GetCurrentLineAndColumn returns the current line and column.
+func (r *Reader) GetCurrentLineAndColumn() (line int, col int, ok error) {
+	return r.track.GetCurrentLineAndColumn()
+}
+
+// GetCurrentOffset returns the current byte offset.
+func (r *Reader) GetCurrentOffset() (offset int, ok error) {
+	return r.track.GetCurrentOffset()
+}
