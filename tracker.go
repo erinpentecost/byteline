@@ -18,7 +18,7 @@ type Tracker struct {
 	buf                      []byte
 	err                      error
 	prev                     rune
-	mux                      sync.Mutex
+	mux                      sync.RWMutex
 }
 
 // NewTracker creates a new Tracker.
@@ -150,8 +150,8 @@ func printHead(p []byte) string {
 
 // GetLineAndColumn returns the line and column given a byte offset.
 func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
+	t.mux.RLock()
+	defer t.mux.RUnlock()
 
 	if byteOffset < 0 {
 		ok = fmt.Errorf("valid byteOffset is >= 0, not %v", byteOffset)
@@ -176,8 +176,8 @@ func (t *Tracker) GetLineAndColumn(byteOffset int) (line int, col int, ok error)
 
 // GetOffset returns the byte offset given a line and column.
 func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
+	t.mux.RLock()
+	defer t.mux.RUnlock()
 
 	// input validation
 
@@ -226,16 +226,14 @@ func (t *Tracker) GetOffset(line int, column int) (offset int, ok error) {
 
 // GetCurrentLineAndColumn returns the current line and column.
 func (t *Tracker) GetCurrentLineAndColumn() (line int, col int, ok error) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
 	line, col, ok = t.GetLineAndColumn(t.currentLineLastSeenIndex)
 	return
 }
 
 // GetCurrentOffset returns the current byte offset.
 func (t *Tracker) GetCurrentOffset() (offset int, ok error) {
-	t.mux.Lock()
-	defer t.mux.Unlock()
+	t.mux.RLock()
+	defer t.mux.RUnlock()
 	offset = t.currentLineLastSeenIndex
 	return
 }
