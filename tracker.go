@@ -235,5 +235,8 @@ func (t *Tracker) GetCurrentOffset() (offset int, ok error) {
 	t.mux.RLock()
 	defer t.mux.RUnlock()
 	offset = t.currentLineLastSeenIndex
+	if offset < 0 {
+		ok = fmt.Errorf("haven't seen any bytes yet, current offset is %v", offset)
+	}
 	return
 }
