@@ -1,24 +1,3 @@
-# byteline
-
-
-[![Go Report Card](https://goreportcard.com/badge/github.com/erinpentecost/byteline)](https://goreportcard.com/report/github.com/erinpentecost/byteline)
-[![Travis CI](https://travis-ci.org/erinpentecost/byteline.svg?branch=master)](https://travis-ci.org/erinpentecost/byteline)
-[![GoDoc](https://godoc.org/github.com/erinpentecost/byteline?status.svg)](https://godoc.org/github.com/erinpentecost/byteline)
-
-Map byte offsets to line + column and back with a writer/reader middleware!
-
-## Features
-
-* Supports `/r`, `/n`, `/r/n`, `/n/r` newline declarations without getting confused by `/r/r` or `/n/n`.
-* Lines and offsets are reported correctly even if a `rune`'s size is > 1. Column reporting will get a little confused, though.
-* Thread safe.
-* On-line querying.
-* Historical querying.
-* Available as a [reader](https://golang.org/pkg/io/#Reader) middleware, [writer](https://golang.org/pkg/io/#Writer) middleware, or a standalone tracker.
-
-## Example
-
-```go
 package examples
 
 import (
@@ -54,4 +33,3 @@ func TestTerseExample(t *testing.T) {
 	someByteOffset, _ := tracker.GetOffset(someLine, someColumn)
 	println(someByteOffset) // 27
 }
-```
